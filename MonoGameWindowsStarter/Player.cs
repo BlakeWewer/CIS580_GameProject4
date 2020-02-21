@@ -13,13 +13,21 @@ namespace MonoGameWindowsStarter
 {
     class Player : iUpdateable, iCollidable
     {
-        public enum State
+        public enum MovingState
         {
             South = 0,
             North = 1,
             West = 2,
             East = 3,
             Idle = 4,
+        }
+
+        public enum FightingState
+        {
+            Idle = 0,
+            Block = 1,
+            Attack = 2,
+            Invincible = 3,
         }
 
         /// <summary>
@@ -49,8 +57,9 @@ namespace MonoGameWindowsStarter
         Texture2D texture;
         Texture2D powerUpBar;
         Texture2D powerUpBarBack;
-        public State state;
-        State prev_state;
+        public MovingState moving_state;
+        MovingState prev_moving_state;
+        public FightingState fighting_state;
         TimeSpan timer;
         int frame;
         public BoundingRectangle Bounds;
@@ -74,8 +83,9 @@ namespace MonoGameWindowsStarter
             timer = new TimeSpan(0);
             curPosition = new Vector2(2, 352);
             Bounds = new BoundingRectangle(curPosition.X, curPosition.Y, 32, 45);
-            state = State.Idle;
-            prev_state = State.Idle;
+            moving_state = MovingState.Idle;
+            prev_moving_state = MovingState.Idle;
+            fighting_state = FightingState.Idle;
             powerUpTimer = new TimeSpan(0);
             bomb = new Bomb(game);
             keyboard = Keyboard.GetState();
@@ -112,22 +122,22 @@ namespace MonoGameWindowsStarter
                 && (int)powerUpTimer.TotalMilliseconds > 10000)
             {
                 powerUpTimer = new TimeSpan(0);
-                prev_state = state;
-                state = State.Idle;
+                prev_moving_state = moving_state;
+                moving_state = MovingState.Idle;
 
                 // Place Bomb in front or below character
-                switch(prev_state)
+                switch(prev_moving_state)
                 {
-                    case State.East:
+                    case MovingState.East:
                         bomb.Place(new Vector2(Bounds.X + Bounds.Width / 4, Bounds.Y + Bounds.Height / 2));
                         break;
-                    case State.North:
+                    case MovingState.North:
                         bomb.Place(new Vector2(Bounds.X + Bounds.Width / 4, Bounds.Y + Bounds.Height / 2));
                         break;
-                    case State.West:
+                    case MovingState.West:
                         bomb.Place(new Vector2(Bounds.X + Bounds.Width / 4, Bounds.Y + Bounds.Height / 2));
                         break;
-                    case State.South:
+                    case MovingState.South:
                         bomb.Place(new Vector2(Bounds.X + Bounds.Width / 4, Bounds.Y + Bounds.Height / 2));
                         break;
                     default:
@@ -143,31 +153,31 @@ namespace MonoGameWindowsStarter
             // Update the player state based on input
             if (keyboard.IsKeyDown(Keys.Up))
             {
-                prev_state = state;
-                state = State.North;
+                prev_moving_state = moving_state;
+                moving_state = MovingState.North;
                 curPosition.Y -= delta * PLAYER_SPEED;
             }
             else if (keyboard.IsKeyDown(Keys.Left))
             {
-                prev_state = state;
-                state = State.West;
+                prev_moving_state = moving_state;
+                moving_state = MovingState.West;
                 curPosition.X -= delta * PLAYER_SPEED;
             }
             else if (keyboard.IsKeyDown(Keys.Right))
             {
-                prev_state = state;
-                state = State.East;
+                prev_moving_state = moving_state;
+                moving_state = MovingState.East;
                 curPosition.X += delta * PLAYER_SPEED;
             }
             else if (keyboard.IsKeyDown(Keys.Down))
             {
-                prev_state = state;
-                state = State.South;
+                prev_moving_state = moving_state;
+                moving_state = MovingState.South;
                 curPosition.Y += delta * PLAYER_SPEED;
             }
             else
             {
-                state = State.Idle;
+                moving_state = MovingState.Idle;
             }
 
             if(curPosition.X < 0)
@@ -176,7 +186,7 @@ namespace MonoGameWindowsStarter
             }
 
             // Update the player animation timer when the player is moving
-            if (state != State.Idle) timer += gameTime.ElapsedGameTime;
+            if (moving_state != MovingState.Idle) timer += gameTime.ElapsedGameTime;
 
             // Determine the frame should increase.  Using a while 
             // loop will accomodate the possiblity the animation should 
@@ -205,16 +215,16 @@ namespace MonoGameWindowsStarter
             // determine the source rectagle of the sprite's current frame
             var source = new Rectangle(
                 frame * (FRAME_WIDTH), // X value 
-                (int)state % 4 * (FRAME_HEIGHT + FRAME_HEIGHT_GAP), // Y value
+                (int)moving_state % 4 * (FRAME_HEIGHT + FRAME_HEIGHT_GAP), // Y value
                 FRAME_WIDTH, // Width 
                 FRAME_HEIGHT // Height
                 );
             int x_value;
-            if(state == State.Idle)
+            if(moving_state == MovingState.Idle)
             {
-                switch(prev_state)
+                switch(prev_moving_state)
                 {
-                    case State.East:
+                    case MovingState.East:
                         x_value = 1;
                         break;
                     default:
@@ -223,7 +233,7 @@ namespace MonoGameWindowsStarter
                 }
                 source = new Rectangle(
                 x_value * (FRAME_WIDTH), // X value 
-                (int)prev_state % 4 * (FRAME_HEIGHT + FRAME_HEIGHT_GAP), // Y value
+                (int)prev_moving_state % 4 * (FRAME_HEIGHT + FRAME_HEIGHT_GAP), // Y value
                 FRAME_WIDTH, // Width 
                 FRAME_HEIGHT // Height
                 );

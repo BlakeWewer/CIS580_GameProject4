@@ -227,21 +227,21 @@ namespace MonoGameWindowsStarter
                             if (player.Bounds.CollidesWith(wall.Bounds) && !wall.destroyed)
                             {
                                 float delta;
-                                switch (player.state)
+                                switch (player.moving_state)
                                 {
-                                    case State.East:
+                                    case MovingState.East:
                                         delta = (player.Bounds.X + player.Bounds.Width) - wall.Bounds.X;
                                         player.curPosition.X = wall.Bounds.X - player.Bounds.Width - delta;
                                         break;
-                                    case State.North:
+                                    case MovingState.North:
                                         delta = (wall.Bounds.Y + wall.Bounds.Height) - player.Bounds.Y;
                                         player.curPosition.Y = wall.Bounds.Y + wall.Bounds.Height + delta;
                                         break;
-                                    case State.West:
+                                    case MovingState.West:
                                         delta = (wall.Bounds.X + wall.Bounds.Width) - player.Bounds.X;
                                         player.curPosition.X = wall.Bounds.X + wall.Bounds.Width + delta + 1;
                                         break;
-                                    case State.South:
+                                    case MovingState.South:
                                         delta = (player.Bounds.Y + player.Bounds.Height) - wall.Bounds.Y;
                                         player.curPosition.Y = wall.Bounds.Y - player.Bounds.Height - delta;
                                         break;
