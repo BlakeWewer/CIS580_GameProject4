@@ -41,6 +41,7 @@ namespace MonoGameWindowsStarter
         World world;
         enum ViewState { TRANSITION_RIGHT, IDLE};
         ViewState viewState = ViewState.IDLE;
+        float translationX = 0;
 
         public Game()
         {
@@ -438,31 +439,25 @@ namespace MonoGameWindowsStarter
                     spriteBatch.End();
                     break;
                 case ViewState.TRANSITION_RIGHT:
-                    float translationX = 0;
+                    DrawTransitionOld(prev_maze, translationX);
+                    DrawTransitionNew(current_maze, translationX);
+                    Debug.WriteLine($"{-translationX} , {graphics.GraphicsDevice.Viewport.Width - translationX}");
 
-                    while(translationX < graphics.GraphicsDevice.Viewport.Width)
-                    {
-                        DrawTransitionOld(prev_maze, translationX);
-                        DrawTransitionNew(current_maze, translationX);
-                        Debug.WriteLine($"{-translationX} , {graphics.GraphicsDevice.Viewport.Width - translationX}");
-
-                        //float timer = 0F;
-                        //while(timer < 1000000)
-                        //{
-                        //    timer += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-                        //}
-                        if(translationX == graphics.GraphicsDevice.Viewport.Width / 2)
-                        {
-                            Debug.WriteLine("Halfway");
-                        }
-                        if (translationX == graphics.GraphicsDevice.Viewport.Width - 1)
-                        { 
-                            Debug.WriteLine("One More");
-                        }
-                        translationX++;
+                    //float timer = 0F;
+                    //while(timer < 1000000)
+                    //{
+                    //    timer += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
+                    //}
+                    if (translationX == graphics.GraphicsDevice.Viewport.Width - 1)
+                    { 
+                        Debug.WriteLine("One More");
                     }
-                    viewState = ViewState.IDLE;
-
+                    translationX++;
+                    if(translationX >= graphics.GraphicsDevice.Viewport.Width)
+                    {
+                        viewState = ViewState.IDLE;
+                        translationX = 0;
+                    }
                     break;
             }
             base.Draw(gameTime);
