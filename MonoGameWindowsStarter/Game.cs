@@ -372,20 +372,6 @@ namespace MonoGameWindowsStarter
             
         }
 
-        void DrawTransition(SpriteBatch spriteBatch, Maze prev_maze, Maze next_maze)
-        {
-            //while(player.Position() != current_maze.startingPosition)
-            //{
-                var offset = current_maze.startingPosition - player.Position();
-                var t = Matrix.CreateTranslation(offset.X, offset.Y, 0);
-                spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, t);
-                player.Draw(spriteBatch);
-                current_maze.Draw(spriteBatch);
-                spriteBatch.End();
-            //}
-            
-        }
-
         public void PreviousLevel()
         {
             sum_score_prev_levels -= score;
@@ -456,28 +442,22 @@ namespace MonoGameWindowsStarter
 
                     while(translationX < graphics.GraphicsDevice.Viewport.Width)
                     {
-                        Matrix t = Matrix.CreateTranslation(-translationX, 0, 0);
-                        spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, t);
-                        //prev_maze.Draw(spriteBatch, new Vector2(0,0));
-                        prev_maze.Draw(spriteBatch);
-                        player.Draw(spriteBatch);
-                        spriteBatch.End();
-
-                        t = Matrix.CreateTranslation(graphics.GraphicsDevice.Viewport.Width - translationX, 0, 0);
-                        spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, t);
-                        //current_maze.Draw(spriteBatch, new Vector2(graphics.GraphicsDevice.Viewport.Width, 0));
-                        current_maze.Draw(spriteBatch);
-                        spriteBatch.End();
+                        DrawTransitionOld(prev_maze, translationX);
+                        DrawTransitionNew(current_maze, translationX);
                         Debug.WriteLine($"{-translationX} , {graphics.GraphicsDevice.Viewport.Width - translationX}");
 
-                        float timer = 0F;
-                        while(timer < 1000000)
-                        {
-                            timer += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-                        }
+                        //float timer = 0F;
+                        //while(timer < 1000000)
+                        //{
+                        //    timer += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
+                        //}
                         if(translationX == graphics.GraphicsDevice.Viewport.Width / 2)
                         {
                             Debug.WriteLine("Halfway");
+                        }
+                        if (translationX == graphics.GraphicsDevice.Viewport.Width - 1)
+                        { 
+                            Debug.WriteLine("One More");
                         }
                         translationX++;
                     }
@@ -486,6 +466,24 @@ namespace MonoGameWindowsStarter
                     break;
             }
             base.Draw(gameTime);
+        }
+
+        void DrawTransitionOld(Maze maze, float translationX)
+        {
+            Matrix t = Matrix.CreateTranslation(-translationX, 0, 0);
+            spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, t);
+            maze.Draw(spriteBatch);
+            player.Draw(spriteBatch);
+            spriteBatch.End();
+        }
+
+        void DrawTransitionNew(Maze maze, float translationX)
+        {
+            Matrix t = Matrix.CreateTranslation(graphics.GraphicsDevice.Viewport.Width - translationX, 0, 0);
+            spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, t);
+            maze.Draw(spriteBatch);
+            player.Draw(spriteBatch);
+            spriteBatch.End();
         }
     }
 }
