@@ -468,7 +468,6 @@ namespace MonoGameWindowsStarter
             Matrix t = Matrix.CreateTranslation(-translationX, 0, 0);
             spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, t);
             maze.Draw(spriteBatch);
-            player.Draw(spriteBatch);
             spriteBatch.End();
         }
 
