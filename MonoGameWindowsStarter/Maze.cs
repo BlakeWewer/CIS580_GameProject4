@@ -16,10 +16,12 @@ namespace MonoGameWindowsStarter
         Game game;
         public List<Wall> walls = new List<Wall>();
         public List<Spike> spikes = new List<Spike>();
+        public List<Exit> exits = new List<Exit>();
         public List<iCollidable> collidables = new List<iCollidable>();
         public Cell[,] cells;
         public Vector2 startingPosition;
         public Vector2 endingPosition;
+        public Tuple<int, int> worldPosition;
 
         public const int CELL_SIZE = 50;
 
@@ -31,7 +33,7 @@ namespace MonoGameWindowsStarter
             this.game = game;
         }
 
-        public void LoadContent(List<Tuple<int, int, int>> wallProperties, List<Tuple<int, int>> spikePositions, Vector2 startingPosition, Vector2 endingPosition)
+        public void LoadContent(List<Tuple<int, int, int>> wallProperties, List<Tuple<int, int>> spikePositions, Vector2 startingPosition, Vector2 endingPosition, Tuple<int, int> worldPosition, Exit.Direction dir)
         {
             NUM_CELLS_WIDTH = (int)Math.Ceiling((double)game.GraphicsDevice.Viewport.Width / (double)CELL_SIZE);
             NUM_CELLS_HEIGHT = (int)Math.Ceiling((double)game.GraphicsDevice.Viewport.Height / (double)CELL_SIZE);
@@ -86,7 +88,15 @@ namespace MonoGameWindowsStarter
                     cells[i, j] = new Cell(this, new BoundingRectangle(i * CELL_SIZE, j * CELL_SIZE, CELL_SIZE, CELL_SIZE));
                 }
             }
-
+            Exit exit = new Exit(game);
+            exit.Bounds.X = (int)(endingPosition.X + 49);
+            exit.Bounds.Y = (int)endingPosition.Y;
+            exit.Bounds.Height = 50;
+            exit.Bounds.Width = 50;
+            exit.direction = dir;
+            exits.Add(exit);
+            collidables.Add(exit);
+            this.worldPosition = worldPosition;
         }
 
         public void Update(GameTime gameTime)
@@ -104,6 +114,19 @@ namespace MonoGameWindowsStarter
             foreach(Spike spike in spikes)
             {
                 spike.Draw(spriteBatch);
+            }
+        }
+
+        public void Draw(SpriteBatch spriteBatch, Vector2 worldPosition)
+        {
+            foreach (Wall wall in walls)
+            {
+                wall.Draw(spriteBatch, worldPosition);
+            }
+
+            foreach (Spike spike in spikes)
+            {
+                spike.Draw(spriteBatch, worldPosition);
             }
         }
 

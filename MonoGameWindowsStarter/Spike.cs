@@ -64,6 +64,16 @@ namespace MonoGameWindowsStarter
            }  
         }
 
+        public void Draw(SpriteBatch spriteBatch, Vector2 worldPosition)
+        {
+            if (on & !destroyed)
+            {
+                spriteBatch.Draw(texture, new BoundingRectangle(new Vector2(Bounds.X, Bounds.Y) + worldPosition, 2*Bounds.Radius, 2*Bounds.Radius), Color.White);
+            }
+        }
+        
+
+
         public Vector2 Position()
         {
             return new Vector2(Bounds.X, Bounds.Y);

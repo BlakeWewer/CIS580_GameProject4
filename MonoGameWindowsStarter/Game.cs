@@ -1,10 +1,13 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
+using System.Diagnostics;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using static MonoGameWindowsStarter.Player;
+using static MonoGameWindowsStarter.Exit;
 
 namespace MonoGameWindowsStarter
 {
@@ -23,6 +26,7 @@ namespace MonoGameWindowsStarter
         int winner_score;
         int current_level = 0;
         Maze current_maze;
+        Maze prev_maze;
         Dictionary<int, Maze> levels = new Dictionary<int, Maze>();
         Maze level1;
         Maze level2;
@@ -34,6 +38,9 @@ namespace MonoGameWindowsStarter
         KeyboardState keyboardState;
         KeyboardState oldkeyboardState;
         List<iUpdateable> updateable;
+        World world;
+        enum ViewState { TRANSITION_RIGHT, IDLE};
+        ViewState viewState = ViewState.IDLE;
 
         public Game()
         {
@@ -46,6 +53,7 @@ namespace MonoGameWindowsStarter
             levels = new Dictionary<int, Maze>();
             gameOver = new GameOver(this);
             winner = new Winner(this);
+            world = new World(this);
             score = 10000;
         }
 
@@ -143,9 +151,10 @@ namespace MonoGameWindowsStarter
                                                             Convert.ToInt32(values[1])));
             }
             levels.Add(2, level3);
-            level1.LoadContent(level1WallPositions, level1SpikePositions, new Vector2(1, 351), new Vector2(1001, 351));
-            level2.LoadContent(level2WallPositions, level2SpikePositions, new Vector2(1, 351), new Vector2(1001, 651));
-            level3.LoadContent(level3WallPositions, level3SpikePositions, new Vector2(1, 651), new Vector2(1001, 201));
+            level1.LoadContent(level1WallPositions, level1SpikePositions, new Vector2(1, 351), new Vector2(1001, 351), new Tuple<int, int>(0, 0), Direction.EAST);
+            level2.LoadContent(level2WallPositions, level2SpikePositions, new Vector2(1, 351), new Vector2(1001, 651), new Tuple<int, int>(0, 1), Direction.EAST);
+            level3.LoadContent(level3WallPositions, level3SpikePositions, new Vector2(1, 651), new Vector2(1001, 201), new Tuple<int, int>(0, 2), Direction.EAST);
+            world.LoadContent(levels);
             gameOver.LoadContent();
             winner.LoadContent();
             // TODO: use this.Content to load your game content here
@@ -172,140 +181,155 @@ namespace MonoGameWindowsStarter
                 Exit();
             updateable = new List<iUpdateable>();
 
-            oldkeyboardState = keyboardState;
-            keyboardState = Keyboard.GetState();
-            if (keyboardState.IsKeyDown(Keys.P) && !oldkeyboardState.IsKeyDown(Keys.P))
+            if(viewState == ViewState.IDLE)
             {
-                NextLevel();
-            }
-            if (keyboardState.IsKeyDown(Keys.Q) && !oldkeyboardState.IsKeyDown(Keys.Q))
-            {
-                PreviousLevel();
-            }
-            if (keyboardState.IsKeyDown(Keys.E) && !oldkeyboardState.IsKeyDown(Keys.E))
-            {
-                player.curPosition = current_maze.endingPosition;
-            }
-            if (keyboardState.IsKeyDown(Keys.S) && !oldkeyboardState.IsKeyDown(Keys.S))
-            {
-                player.curPosition = current_maze.startingPosition;
-            }
-
-            if (!win && !game_over)
-            {
-                if (player.Bounds.X > graphics.GraphicsDevice.Viewport.Width)
+                oldkeyboardState = keyboardState;
+                keyboardState = Keyboard.GetState();
+                if (keyboardState.IsKeyDown(Keys.P) && !oldkeyboardState.IsKeyDown(Keys.P))
                 {
                     NextLevel();
-                    return;
                 }
+                if (keyboardState.IsKeyDown(Keys.Q) && !oldkeyboardState.IsKeyDown(Keys.Q))
+                {
+                    PreviousLevel();
+                }
+                if (keyboardState.IsKeyDown(Keys.E) && !oldkeyboardState.IsKeyDown(Keys.E))
+                {
+                    player.curPosition = current_maze.endingPosition;
+                }
+                if (keyboardState.IsKeyDown(Keys.S) && !oldkeyboardState.IsKeyDown(Keys.S))
+                {
+                    player.curPosition = current_maze.startingPosition;
+                }
+
+                if (!win && !game_over)
+                {
+                    if (player.Bounds.X > graphics.GraphicsDevice.Viewport.Width)
+                    {
+                        NextLevel();
+                        return;
+                    }
+
+                    current_maze = levels[current_level];
+
+                    // TODO: Add your update logic here
+                    updateable.Add(player);
+                    foreach (Spike spike in current_maze.spikes)
+                    {
+                        updateable.Add(spike);
+                    }
+                    foreach (Cell cell in current_maze.cells)
+                    {
+                        updateable.Add(cell);
+                    }
+                    foreach (iUpdateable obj in updateable)
+                    {
+                        obj.Update(gameTime);
+                    }
+
+                    foreach (Cell cell in current_maze.getNearCells(player))
+                    {
+                        foreach (iCollidable collidable in cell.collidables)
+                        {
+                            if (collidable is Wall wall)
+                            {
+                                if (player.Bounds.CollidesWith(wall.Bounds) && !wall.destroyed)
+                                {
+                                    float delta;
+                                    switch (player.moving_state)
+                                    {
+                                        case MovingState.East:
+                                            delta = (player.Bounds.X + player.Bounds.Width) - wall.Bounds.X;
+                                            player.curPosition.X = wall.Bounds.X - player.Bounds.Width - delta;
+                                            break;
+                                        case MovingState.North:
+                                            delta = (wall.Bounds.Y + wall.Bounds.Height) - player.Bounds.Y;
+                                            player.curPosition.Y = wall.Bounds.Y + wall.Bounds.Height + delta;
+                                            break;
+                                        case MovingState.West:
+                                            delta = (wall.Bounds.X + wall.Bounds.Width) - player.Bounds.X;
+                                            player.curPosition.X = wall.Bounds.X + wall.Bounds.Width + delta + 1;
+                                            break;
+                                        case MovingState.South:
+                                            delta = (player.Bounds.Y + player.Bounds.Height) - wall.Bounds.Y;
+                                            player.curPosition.Y = wall.Bounds.Y - player.Bounds.Height - delta;
+                                            break;
+                                    }
+                                }
+                                if (player.bomb.Explosion.CollidesWith(wall.Bounds) && player.bomb.detonated && !wall.destroyed)
+                                {
+                                    if (wall.isBombable)
+                                    {
+                                        wall.Bounds.X = -50;
+                                        wall.Bounds.Y = -50;
+                                        score += 5000;
+                                    }
+                                }
+                            }
+                            if (collidable is Spike spike)
+                            {
+                                if (player.Bounds.CollidesWith(spike.Bounds) && spike.on)
+                                {
+                                    player.ouchSFX.Play(1, 0, 0);
+                                    GameOverDeath();
+                                }
+                                if (player.bomb.Explosion.CollidesWith(spike.Bounds) && player.bomb.detonated && spike.on)
+                                {
+                                    spike.destroyed = true;
+                                    score += 2000;
+                                }
+                            }
+                            if (collidable is Exit exit)
+                            {
+                                if (player.Bounds.CollidesWith(exit.Bounds))
+                                {
+                                    NextLevelExit();    // Change to Transition Slide
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                    foreach (Cell cell in current_maze.getNearCells(player.bomb))
+                    {
+                        foreach (iCollidable collidable in cell.collidables)
+                        {
+                            Wall wall = collidable as Wall;
+                            Spike spike = collidable as Spike;
+                            if (wall != null)
+                            {
+                                if (player.bomb.Explosion.CollidesWith(wall.Bounds) && player.bomb.detonated && !wall.destroyed)
+                                {
+                                    if (wall.isBombable)
+                                    {
+                                        wall.Bounds.X = -50;
+                                        wall.Bounds.Y = -50;
+                                        score += 5000;
+                                    }
+                                }
+                            }
+                            if (spike != null)
+                            {
+                                if (player.bomb.Explosion.CollidesWith(spike.Bounds) && player.bomb.detonated && spike.on)
+                                {
+                                    spike.destroyed = true;
+                                    score += 2000;
+                                }
+                            }
+                        }
+                    }
+                    if (player.Bounds.CollidesWith(player.bomb.Explosion) && player.bomb.detonated)
+                    {
+                        player.ouchBombSFX.Play(1, 0, 0);
+                        GameOverDeath();
+                    }
+
+                    score--;
+                }
+            } else if (viewState == ViewState.TRANSITION_RIGHT)
+            {
                 
-                current_maze = levels[current_level];
-
-                // TODO: Add your update logic here
-                updateable.Add(player);
-                foreach(Spike spike in current_maze.spikes)
-                {
-                    updateable.Add(spike);
-                }
-                foreach(Cell cell in current_maze.cells)
-                {
-                    updateable.Add(cell);
-                }
-                foreach (iUpdateable obj in updateable)
-                {
-                    obj.Update(gameTime);
-                }
-
-                foreach(Cell cell in current_maze.getNearCells(player))
-                {
-                    foreach (iCollidable collidable in cell.collidables)
-                    {
-                        Wall wall = collidable as Wall;
-                        Spike spike = collidable as Spike;
-                        if (wall != null)
-                        {
-                            if (player.Bounds.CollidesWith(wall.Bounds) && !wall.destroyed)
-                            {
-                                float delta;
-                                switch (player.moving_state)
-                                {
-                                    case MovingState.East:
-                                        delta = (player.Bounds.X + player.Bounds.Width) - wall.Bounds.X;
-                                        player.curPosition.X = wall.Bounds.X - player.Bounds.Width - delta;
-                                        break;
-                                    case MovingState.North:
-                                        delta = (wall.Bounds.Y + wall.Bounds.Height) - player.Bounds.Y;
-                                        player.curPosition.Y = wall.Bounds.Y + wall.Bounds.Height + delta;
-                                        break;
-                                    case MovingState.West:
-                                        delta = (wall.Bounds.X + wall.Bounds.Width) - player.Bounds.X;
-                                        player.curPosition.X = wall.Bounds.X + wall.Bounds.Width + delta + 1;
-                                        break;
-                                    case MovingState.South:
-                                        delta = (player.Bounds.Y + player.Bounds.Height) - wall.Bounds.Y;
-                                        player.curPosition.Y = wall.Bounds.Y - player.Bounds.Height - delta;
-                                        break;
-                                }
-                            }
-                            if (player.bomb.Explosion.CollidesWith(wall.Bounds) && player.bomb.detonated && !wall.destroyed)
-                            {
-                                if (wall.isBombable)
-                                {
-                                    wall.Bounds.X = -50;
-                                    wall.Bounds.Y = -50;
-                                }
-                            }
-                        }
-                        if (spike != null)
-                        {
-                            if (player.Bounds.CollidesWith(spike.Bounds) && spike.on)
-                            {
-                                player.ouchSFX.Play(1, 0, 0);
-                                GameOverDeath();
-                            }
-                            if (player.bomb.Explosion.CollidesWith(spike.Bounds) && player.bomb.detonated && spike.on)
-                            {
-                                spike.destroyed = true;
-                            }
-                        }
-                    }
-                }
-                foreach (Cell cell in current_maze.getNearCells(player.bomb))
-                {
-                    foreach (iCollidable collidable in cell.collidables)
-                    {
-                        Wall wall = collidable as Wall;
-                        Spike spike = collidable as Spike;
-                        if (wall != null)
-                        {
-                            if (player.bomb.Explosion.CollidesWith(wall.Bounds) && player.bomb.detonated && !wall.destroyed)
-                            {
-                                if (wall.isBombable)
-                                {
-                                    wall.Bounds.X = -50;
-                                    wall.Bounds.Y = -50;
-                                }
-                            }
-                        }
-                        if (spike != null)
-                        {
-                            if (player.bomb.Explosion.CollidesWith(spike.Bounds) && player.bomb.detonated && spike.on)
-                            {
-                                spike.destroyed = true;
-                            }
-                        }
-                    }
-                }
-                if (player.Bounds.CollidesWith(player.bomb.Explosion) && player.bomb.detonated)
-                {
-                    player.ouchBombSFX.Play(1, 0, 0);
-                    GameOverDeath();
-                }
-
-                score--;
-
-                base.Update(gameTime);
             }
+            base.Update(gameTime);
         }
 
         public void NextLevel()
@@ -324,6 +348,42 @@ namespace MonoGameWindowsStarter
                 win = true;
                 winner_score = sum_score_prev_levels;
             }
+        }
+
+        public void NextLevelExit()
+        {
+            sum_score_prev_levels += score;
+            score = 10000;
+            prev_maze = current_maze;
+            current_level++;
+            
+            if (levels.TryGetValue(current_level, out current_maze))
+            {
+                player.curPosition = current_maze.startingPosition;
+                player.Bounds.X = player.curPosition.X;
+                player.Bounds.Y = player.curPosition.Y;
+                viewState = ViewState.TRANSITION_RIGHT;
+            }
+            else
+            {
+                win = true;
+                winner_score = sum_score_prev_levels;
+            }
+            
+        }
+
+        void DrawTransition(SpriteBatch spriteBatch, Maze prev_maze, Maze next_maze)
+        {
+            //while(player.Position() != current_maze.startingPosition)
+            //{
+                var offset = current_maze.startingPosition - player.Position();
+                var t = Matrix.CreateTranslation(offset.X, offset.Y, 0);
+                spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, t);
+                player.Draw(spriteBatch);
+                current_maze.Draw(spriteBatch);
+                spriteBatch.End();
+            //}
+            
         }
 
         public void PreviousLevel()
@@ -361,33 +421,70 @@ namespace MonoGameWindowsStarter
             GraphicsDevice.Clear(Color.Black);
 
             // TODO: Add your drawing code here
-            spriteBatch.Begin();
-            if (win)
+            
+            switch(viewState)
             {
-                winner.Draw(spriteBatch);
-                Vector2 messageCentered = scoreFont.MeasureString("Thanks For Playing!") / 2;
-                spriteBatch.DrawString(scoreFont, "Thanks For Playing!", new Vector2((graphics.GraphicsDevice.Viewport.Width / 2) - messageCentered.X, (graphics.GraphicsDevice.Viewport.Height / 2)), Color.Red);
-                Vector2 fontCentered = scoreFont.MeasureString("Score: " + winner_score.ToString()) / 2;
-                spriteBatch.DrawString(scoreFont, "Score: " + winner_score.ToString(), new Vector2((graphics.GraphicsDevice.Viewport.Width / 2) - fontCentered.X, (graphics.GraphicsDevice.Viewport.Height / 2) + 100), Color.Black);
+                case ViewState.IDLE:
+                    spriteBatch.Begin();
+                    if (win)
+                    {
+                        winner.Draw(spriteBatch);
+                        Vector2 messageCentered = scoreFont.MeasureString("Thanks For Playing!") / 2;
+                        spriteBatch.DrawString(scoreFont, "Thanks For Playing!", new Vector2((graphics.GraphicsDevice.Viewport.Width / 2) - messageCentered.X, (graphics.GraphicsDevice.Viewport.Height / 2)), Color.Red);
+                        Vector2 fontCentered = scoreFont.MeasureString("Score: " + winner_score.ToString()) / 2;
+                        spriteBatch.DrawString(scoreFont, "Score: " + winner_score.ToString(), new Vector2((graphics.GraphicsDevice.Viewport.Width / 2) - fontCentered.X, (graphics.GraphicsDevice.Viewport.Height / 2) + 100), Color.Black);
+                    }
+                    else if (game_over)
+                    {
+                        gameOver.Draw(spriteBatch);
+
+                        Vector2 fontCentered = scoreFont.MeasureString("Score: " + game_over_score.ToString()) / 2;
+                        spriteBatch.DrawString(scoreFont, "Score: " + game_over_score.ToString(), new Vector2((graphics.GraphicsDevice.Viewport.Width / 2) - fontCentered.X, (graphics.GraphicsDevice.Viewport.Height / 2) + 100), Color.Black);
+                    }
+                    else
+                    {
+                        current_maze.Draw(spriteBatch);
+
+                        // render the score in the top left of the screen
+                        spriteBatch.DrawString(scoreFont, $"Score: {score}", Vector2.Zero, Color.Black);
+                        player.Draw(spriteBatch);
+                    }
+                    spriteBatch.End();
+                    break;
+                case ViewState.TRANSITION_RIGHT:
+                    float translationX = 0;
+
+                    while(translationX < graphics.GraphicsDevice.Viewport.Width)
+                    {
+                        Matrix t = Matrix.CreateTranslation(-translationX, 0, 0);
+                        spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, t);
+                        //prev_maze.Draw(spriteBatch, new Vector2(0,0));
+                        prev_maze.Draw(spriteBatch);
+                        player.Draw(spriteBatch);
+                        spriteBatch.End();
+
+                        t = Matrix.CreateTranslation(graphics.GraphicsDevice.Viewport.Width - translationX, 0, 0);
+                        spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, t);
+                        //current_maze.Draw(spriteBatch, new Vector2(graphics.GraphicsDevice.Viewport.Width, 0));
+                        current_maze.Draw(spriteBatch);
+                        spriteBatch.End();
+                        Debug.WriteLine($"{-translationX} , {graphics.GraphicsDevice.Viewport.Width - translationX}");
+
+                        float timer = 0F;
+                        while(timer < 1000000)
+                        {
+                            timer += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
+                        }
+                        if(translationX == graphics.GraphicsDevice.Viewport.Width / 2)
+                        {
+                            Debug.WriteLine("Halfway");
+                        }
+                        translationX++;
+                    }
+                    viewState = ViewState.IDLE;
+
+                    break;
             }
-            else if (game_over)
-            {
-                gameOver.Draw(spriteBatch);
-
-                Vector2 fontCentered = scoreFont.MeasureString("Score: " + game_over_score.ToString()) / 2;
-                spriteBatch.DrawString(scoreFont, "Score: " + game_over_score.ToString(), new Vector2((graphics.GraphicsDevice.Viewport.Width / 2) - fontCentered.X, (graphics.GraphicsDevice.Viewport.Height / 2) + 100), Color.Black);
-            }
-            else
-            {
-                current_maze.Draw(spriteBatch);
-
-                // render the score in the top left of the screen
-                spriteBatch.DrawString(scoreFont, $"Score: {score}", Vector2.Zero, Color.Black);
-                player.Draw(spriteBatch);
-            }
-
-            spriteBatch.End();
-
             base.Draw(gameTime);
         }
     }

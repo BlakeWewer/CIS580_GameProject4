@@ -47,6 +47,7 @@
     <Compile Include="Cell.cs" />
     <Compile Include="Collisions.cs" />
     <Compile Include="Enemy.cs" />
+    <Compile Include="Exit.cs" />
     <Compile Include="Game.cs" />
     <Compile Include="GameOver.cs" />
     <Compile Include="iCollidable.cs" />
@@ -64,6 +65,7 @@
     <Compile Include="Spike.cs" />
     <Compile Include="Wall.cs" />
     <Compile Include="Winner.cs" />
+    <Compile Include="World.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="MonoGame.Framework">
@@ -80,7 +82,7 @@
     <Content Include="Level2WallPlacements.txt" />
     <Content Include="Level3SpikePlacements.txt" />
     <Content Include="Level3WallPlacements.txt" />
-    <Content Include="Possible Game Project 3 Implementations.txt" />
+    <Content Include="Possible Game Project 4 Implementations.txt" />
     <EmbeddedResource Include="Resources\Level3WallPlacements.txt" />
     <EmbeddedResource Include="Resources\Level3SpikePlacements.txt" />
     <EmbeddedResource Include="Resources\Level2WallPlacements.txt" />

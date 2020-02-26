@@ -1,0 +1,7 @@
+﻿State Pattern: DONE
+
+
+Translation Matrices:
+Zelda-like transitions
+
+Make a World class with Maze[][] containing the levels.  Invoke draw and update methods for the mazes and have Game class call it
