@@ -443,11 +443,6 @@ namespace MonoGameWindowsStarter
                     DrawTransitionNew(current_maze, translationX);
                     Debug.WriteLine($"{-translationX} , {graphics.GraphicsDevice.Viewport.Width - translationX}");
 
-                    //float timer = 0F;
-                    //while(timer < 1000000)
-                    //{
-                    //    timer += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-                    //}
                     if (translationX == graphics.GraphicsDevice.Viewport.Width - 1)
                     { 
                         Debug.WriteLine("One More");
